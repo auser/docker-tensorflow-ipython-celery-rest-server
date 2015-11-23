@@ -1,0 +1,34 @@
+web:
+  build: ./web
+  expose:
+    - "8001"
+  links:
+    - redis
+  volumes_from:  
+    - unison
+  volumes:
+    - ./web:/usr/src/app
+  env_file: .env
+  command: /usr/local/bin/gunicorn -w 2 -b :8000 app:app
+
+web:
+  build: web
+  links:
+    - redis
+  ports:
+    - "8000"
+ipython:
+  build: ./jupyter
+  links:
+    - redis
+  ports:
+    - "8888:8888"
+redis:
+  image: redis
+
+unison:  
+  image: leighmcculloch/unison  
+  environment:  
+    - UNISON_VERSION=2.40.102
+  ports:  
+    - "5000:5000"

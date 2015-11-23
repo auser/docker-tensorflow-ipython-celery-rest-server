@@ -1,0 +1,52 @@
+web:
+  restart: always
+  build: ./web
+  ports:
+    - "8000:8000"
+  links:
+    - redis
+    - rabbitmq
+  volumes:
+    - ./web:/usr/src/app
+    - ./shared:/usr/src/app/tasks
+  env_file: .env
+  # command: python server.py
+  command: /usr/local/bin/gunicorn -c gunicorn.conf.py server:app
+worker:
+  build: ./worker
+  command: celery worker --loglevel=debug --config=celeryconfig
+  links:
+    - redis
+    - rabbitmq
+  volumes:
+    - ./shared:/usr/src/app/tasks
+ipython:
+  build: ./jupyter
+  links:
+    - redis
+  ports:
+    - "8888:8888"
+redis:
+  image: redis
+rabbitmq:
+  image: rabbitmq:management
+  hostname: 'rmq'
+  ports:
+    - "5672:5672"
+    - "15672:15672"
+
+# zookeeper:
+#   image: wurstmeister/zookeeper
+#   ports: 
+#     - "2181"
+# kafka:
+#   image: wurstmeister/kafka
+#   ports:
+#     - "9092"
+#   links: 
+#     - zookeeper:zk
+#   environment:
+#     KAFKA_ADVERTISED_HOST_NAME: 10.0.1.201
+#     KAFKA_CREATE_TOPICS: jobs
+#   volumes:
+#     - /var/run/docker.sock:/var/run/docker.sock
