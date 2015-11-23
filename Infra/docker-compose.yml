@@ -27,7 +27,7 @@ ipython:
   ports:
     - "8888:8888"
   extends:
-    file: ./shared/shared.yml
+    file: ./shared/cuda.yml
     service: cuda_base
 redis:
   image: redis

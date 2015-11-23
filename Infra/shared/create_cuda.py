@@ -1,8 +1,10 @@
 #/usr/bin/env python
 
-from yaml import load, dump
+import yaml
 import os, sys, re
 import subprocess
+
+cuda_version = '7.0'
 
 nv_device = '/dev/nvidia'
 uvm_device = '{0}-uvm'.format(nv_device)
@@ -25,7 +27,7 @@ nv_libs_cuda = ['cuda', 'nvcuvid', 'nvidia-compiler', 'nvidia-encode', 'nvidia-m
 def no_error(cmds):
 	try:
 		for cmd in cmds.split():
-			subprocess.check_call([cmd], stdout=None, stderr=None)
+			subprocess.Popen([cmd], stdout=open(os.devnull, "w"), stderr=subprocess.STDOUT)
 	except subprocess.CalledProcessError:
 		return False
 
@@ -114,9 +116,22 @@ for binary in nv_bins:
 	if b:
 		d['volumes'].append(format_mount(b, '{0}/{1}'.format(nv_bins_volume, binary)))
 
-out = dump(d,
+
+cuda_dir = '/usr/local/cuda-{0}/lib64'.format(cuda_version)
+files = [x for x in os.listdir(cuda_dir) if os.path.isfile(cuda_dir+os.sep+x)]
+for lib in files:
+	local_file = os.path.join(cuda_dir, lib)
+	remote_volume = '{0}/{1}'.format(nv_bins_volume, lib)
+	d['volumes'].append(format_mount(local_file, remote_volume))
+
+d['environment'] = {}
+d['environment'].update({'LD_LIBRARY_PATH': '$LD_LIBRARY_PATH:{0}'.format(cuda_dir)})
+
+out = yaml.safe_dump({'cuda_base': d}, 
 	indent=4,
-	default_flow_style=False
-).replace('- ', '  - ')
+	allow_unicode=True,
+	default_flow_style=False)
 
 print out
+with open('cuda.yml', 'w') as outfile:
+    outfile.write(out)

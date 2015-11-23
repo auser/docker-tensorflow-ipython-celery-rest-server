@@ -120,7 +120,7 @@ build_docker_args()
     done
 
     for lib in $NV_LIBS_CUDA; do
-        local paths="$( __library_paths $lib )"
+        local paths="$( __{library_}paths $lib )"
         echo $paths
         if [ -z "$paths" ]; then
             __log WARN "Could not find library: $lib"
@@ -128,7 +128,7 @@ build_docker_args()
         fi
         for path in $( __filter_duplicate_paths "$paths" ); do
             args="$args -v $path:$path"
-            case $( __library_arch "$path" ) in
+            case $( {__library_arch} "$path" ) in
                 32) args="$args -v $path:$NV_LIBS_VOLUME/lib/$(basename $path)" ;;
                 64) args="$args -v $path:$NV_LIBS_VOLUME/lib64/$(basename $path)" ;;
             esac

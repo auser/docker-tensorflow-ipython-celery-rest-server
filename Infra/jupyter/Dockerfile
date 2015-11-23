@@ -1,5 +1,6 @@
 # FROM ermaker/keras-jupyter
-FROM cuda
+# FROM cuda:cudnn-runtime
+FROM kaixhin/cuda
 # FROM ubuntu:14.04
 
 RUN apt-get update -y --fix-missing && apt-get install -q -y --no-install-recommends \
