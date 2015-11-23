@@ -1,0 +1,17 @@
+cuda_base:
+	devices:
+	  - /dev/nvidia-uvm:/dev/nvidia-uvm
+	  - /dev/nvidiactl:/dev/nvidiactl
+	  - /dev/nvidia0:/dev/nvidia0
+	  - /dev/nvidia1:/dev/nvidia1
+	volumes:
+	  - /usr/lib/x86_64-linux-gnu/libcuda.so:/usr/local/nvidia/lib64/libcuda.so
+	  - /usr/lib32/nvidia-352/libnvcuvid.so:/usr/local/nvidia/lib/libnvcuvid.so
+	  - /usr/lib32/nvidia-352/libnvidia-compiler.so:/usr/local/nvidia/lib/libnvidia-compiler.so
+	  - /usr/lib32/nvidia-352/libnvidia-encode.so:/usr/local/nvidia/lib/libnvidia-encode.so
+	  - /usr/lib32/nvidia-352/libnvidia-ml.so:/usr/local/nvidia/lib/libnvidia-ml.so
+	  - /usr/bin/nvidia-cuda-mps-control:/usr/local/bin/nvidia-cuda-mps-control
+	  - /usr/bin/nvidia-cuda-mps-server:/usr/local/bin/nvidia-cuda-mps-server
+	  - /usr/bin/nvidia-debugdump:/usr/local/bin/nvidia-debugdump
+	  - /usr/bin/nvidia-persistenced:/usr/local/bin/nvidia-persistenced
+	  - /usr/bin/nvidia-smi:/usr/local/bin/nvidia-smi
