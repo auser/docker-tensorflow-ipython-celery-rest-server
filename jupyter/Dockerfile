@@ -4,6 +4,8 @@ FROM kaixhin/cuda
 # FROM ubuntu:14.04
 
 ## Install prereqs
+
+RUN cd /usr/local/src
 RUN apt-get update -y --fix-missing && apt-get install -q -y --no-install-recommends \
   wget bzip2 ca-certificates \
   build-essential \
@@ -39,14 +41,34 @@ ENTRYPOINT [ "/usr/bin/tini", "--" ]
 
 # iPython stuff
 RUN conda install -y theano h5py
-RUN pip install keras
+RUN pip install keras ipyparallel
 RUN conda install -y jupyter pandas matplotlib seaborn
 RUN pip install https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0.5.0-cp27-none-linux_x86_64.whl
 
 ## mxnet
 RUN apt-get install -y build-essential git libatlas-base-dev libopencv-dev python-opencv
+RUN cd /usr/local/src
 RUN git clone --recursive https://github.com/dmlc/mxnet
 RUN cd mxnet; make -j4
+
+## Torch kernel
+RUN cd /usr/local/src
+RUN sudo apt-get install libzmq3-dev luarocks openssl cmake
+
+RUN curl -s https://raw.githubusercontent.com/torch/ezinstall/master/install-deps | bash
+RUN git clone https://github.com/torch/distro.git /usr/local/src/torch --recursive
+RUN cd /usr/local/src/torch; ./install.sh
+
+
+RUN cd /usr/local/src
+RUN git clone https://github.com/facebook/iTorch.git
+RUN cd iTorch
+RUN luarocks install lzmq
+RUN luarocks install penlight
+RUN luarocks install luafilesystem
+RUN luarocks install luacrypto
+RUN luarocks install org.conman.env
+RUN luarocks make
 
 
 ## The rest
