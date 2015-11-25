@@ -3,12 +3,13 @@
 FROM kaixhin/cuda
 # FROM ubuntu:14.04
 
+## Install prereqs
 RUN apt-get update -y --fix-missing && apt-get install -q -y --no-install-recommends \
   wget bzip2 ca-certificates \
   build-essential \
   libglib2.0-0 libxext6 libsm6 libxrender1 \
   pkg-config libfreetype6-dev libXext-dev python-qt4 \
-  curl grep sed dpkg  \
+  curl grep sed dpkg git \
   && rm -rf /var/lib/apt/lists/*
 
 ## Miniconda (https://hub.docker.com/r/continuumio/miniconda/~/dockerfile/)
@@ -41,6 +42,12 @@ RUN conda install -y theano h5py
 RUN pip install keras
 RUN conda install -y jupyter pandas matplotlib seaborn
 RUN pip install https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0.5.0-cp27-none-linux_x86_64.whl
+
+## mxnet
+RUN apt-get install -y build-essential git libatlas-base-dev libopencv-dev python-opencv
+git clone --recursive https://github.com/dmlc/mxnet
+cd mxnet; make -j4
+
 
 ## The rest
 VOLUME /notebook
