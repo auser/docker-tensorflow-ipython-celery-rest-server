@@ -3,6 +3,23 @@
 import yaml
 import os, sys, re
 import subprocess
+import argparse
+
+## Arguments
+parser = argparse.ArgumentParser(description='Create a shared cuda.yml for docker-compose')
+parser.add_argument('--gpu', '-g', 
+	action='append',
+	dest='gpus',
+	default=[])
+parser.add_argument('--verbose',
+	action='store_true',
+	help='Verbose logging')
+parser.add_argument('--out', '-o',
+	dest='save_directory',
+	default='shared/',
+	help='Directory to write the shared docker-compose')
+
+args = parser.parse_args()
 
 cuda_version = '7.0'
 
@@ -24,6 +41,11 @@ nv_bins = ['nvidia-cuda-mps-control',
 nv_libs_volume = '/usr/local/nvidia'
 nv_libs_cuda = ['cuda', 'nvcuvid', 'nvidia-compiler', 'nvidia-encode', 'nvidia-ml']
 
+def log(msg, **kwargs):
+	print('DEBUG: {0}'.format(msg));
+	if kwargs.get('body'):
+		print(kwargs.get('body', ''))
+
 def no_error(cmds):
 	try:
 		for cmd in cmds.split():
@@ -34,9 +56,10 @@ def no_error(cmds):
 def grep(cmd, grp):
 	grep = subprocess.Popen(['grep', grp], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 	orig = subprocess.Popen(cmd, stdout=grep.stdin)
-	output = grep.communicate()[0]
+	output, errs = grep.communicate()
 	orig.wait()
-	return output
+	if output:
+		return output.decode('ascii')
 
 def query_nvsmi(section, gpu_id=False):
 	cmd = ['nvidia-smi','-q']
@@ -60,7 +83,7 @@ def library_arch(lib):
 	if errs:
 		print('There was an error with `which {0}`: {1}'.format(b, errs))
 	elif out:
-		return re.sub('-bit', '', out.split()[2])
+		return re.sub('-bit', '', out.decode('ascii').split()[2])
 
 def which(b):
 	proc = subprocess.Popen(['which', b], stdout=subprocess.PIPE)
@@ -68,7 +91,7 @@ def which(b):
 	if errs:
 		print('There was an error with `which {0}`: {1}'.format(b, errs))
 	elif out:
-		return out.strip(' \n\t\r')
+		return out.decode('ascii').strip(' \n\t\r')
 
 
 def format_mount(a, b=None):
@@ -79,37 +102,37 @@ def format_mount(a, b=None):
 driver_version = query_nvsmi('Driver Version')
 no_error('nvidia-smi nvidia-modprobe')
 
-gpus = sys.argv[1:]
-
 d = {
 	'devices': [],
 	'volumes': []
 }
 
 ## Add devices
-devices = [uvm_device, ctl_device]
+devices = [ctl_device]
 d['devices'] = [format_mount(dev) for dev in devices]
 
-for gpu in gpus:
-	gpu_minor_version = query_nvsmi('Minor Number', gpu)
-	if gpu_minor_version:
-		d['devices'].append(format_mount('{0}{1}'.format(nv_device, gpu_minor_version)))
-	else:
-		print('Could not find minor version for gpu: {0}'.format(gpu))
+if args.gpus:
+	for gpu in args.gpus:
+		gpu_minor_version = query_nvsmi('Minor Number', gpu)
+		if gpu_minor_version:
+			d['devices'].append(format_mount('{0}{1}'.format(nv_device, gpu_minor_version)))
+		else:
+			print('Could not find minor version for gpu: {0}'.format(gpu))
 
 library_paths = [library_path(lib) for lib in nv_libs_cuda]
 
 for lib in library_paths:
-	basename = os.path.basename(lib)
-	arch = library_arch(lib)
-	if arch:
-		mount = None
-		if arch == '32':
-			mount = format_mount(lib, '{0}/lib/{1}'.format(nv_libs_volume, basename))
-		if arch == '64':
-			mount = format_mount(lib, '{0}/lib64/{1}'.format(nv_libs_volume, basename))
-		if mount:
-			d['volumes'].append(mount)
+	if lib:
+		basename = os.path.basename(lib)
+		arch = library_arch(lib)
+		if arch:
+			mount = None
+			if arch == '32':
+				mount = format_mount(lib, '{0}/lib/{1}'.format(nv_libs_volume, basename))
+			if arch == '64':
+				mount = format_mount(lib, '{0}/lib64/{1}'.format(nv_libs_volume, basename))
+			if mount:
+				d['volumes'].append(mount)
 
 for binary in nv_bins:
 	b = which(binary)
@@ -121,17 +144,18 @@ cuda_dir = '/usr/local/cuda-{0}/lib64'.format(cuda_version)
 files = [x for x in os.listdir(cuda_dir) if os.path.isfile(cuda_dir+os.sep+x)]
 for lib in files:
 	local_file = os.path.join(cuda_dir, lib)
-	remote_volume = '{0}/{1}'.format(nv_bins_volume, lib)
+	remote_volume = '{0}/{1}'.format(nv_libs_volume, lib)
 	d['volumes'].append(format_mount(local_file, remote_volume))
 
 d['environment'] = {}
-d['environment'].update({'LD_LIBRARY_PATH': '$LD_LIBRARY_PATH:{0}'.format(cuda_dir)})
+d['environment'].update({'LD_LIBRARY_PATH': '$LD_LIBRARY_PATH:{0}:{1}'.format(cuda_dir, nv_libs_volume)})
 
 out = yaml.safe_dump({'cuda_base': d}, 
 	indent=4,
 	allow_unicode=True,
 	default_flow_style=False)
 
-print out
-with open('cuda.yml', 'w') as outfile:
+log('Writing cuda file', body=out)
+
+with open('{0}/cuda.yml'.format(args.save_directory), 'w') as outfile:
     outfile.write(out)
