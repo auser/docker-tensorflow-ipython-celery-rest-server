@@ -45,8 +45,8 @@ RUN pip install https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0
 
 ## mxnet
 RUN apt-get install -y build-essential git libatlas-base-dev libopencv-dev python-opencv
-git clone --recursive https://github.com/dmlc/mxnet
-cd mxnet; make -j4
+RUN git clone --recursive https://github.com/dmlc/mxnet
+RUN cd mxnet; make -j4
 
 
 ## The rest
