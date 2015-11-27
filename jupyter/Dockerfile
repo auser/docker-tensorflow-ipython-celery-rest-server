@@ -43,8 +43,8 @@ ENTRYPOINT [ "/usr/bin/tini", "--" ]
 
 # iPython stuff
 RUN conda install -y theano h5py
-RUN pip install keras ipyparallel
-RUN conda install -y jupyter pandas matplotlib seaborn
+RUN pip install keras ipyparallel sklearn
+RUN conda install -y jupyter pandas matplotlib seaborn 
 RUN pip install https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0.5.0-cp27-none-linux_x86_64.whl
 
 ## mxnet
@@ -102,13 +102,23 @@ CMD ["/usr/bin/luarocks make"]
 
 RUN luarocks install qtlua
 
+WORKDIR $HOME/torch
 RUN git clone https://github.com/facebook/iTorch.git
 WORKDIR $HOME/torch/iTorch
 CMD ["/usr/bin/luarocks make"]
 
-## The rest
+
+## TODO: Move above
 VOLUME /notebook
 WORKDIR /notebook
+
+#RUN useradd -d /notebook -ms /bin/bash nonroot
+
+#RUN chown -R nonroot:nonroot /notebook
+#USER nonroot
+#ENV HOME /notebook
+
+## The rest
 EXPOSE 8888
 #CMD itorch notebook --no-browser --ip=0.0.0.0 --profile=itorch
-CMD jupyter notebook --no-browser --ip=0.0.0.0 --profile=itorch
+CMD jupyter notebook --no-browser --ip=0.0.0.0 --config=/.jupyter/jupyter_notebook_config.py 

@@ -40,3 +40,4 @@ env/
 .Spotlight-V100
 .TrashesInfra/shared/cuda.yml
 shared/cuda.yml
+secrets/

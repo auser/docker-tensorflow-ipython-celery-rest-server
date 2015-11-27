@@ -29,6 +29,8 @@ ipython:
   extends:
     file: ./shared/cuda.yml
     service: cuda_base
+  volumes:
+    - ./secrets/profiles:/.jupyter
 redis:
   image: redis
 rabbitmq:
