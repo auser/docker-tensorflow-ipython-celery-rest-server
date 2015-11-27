@@ -55,7 +55,7 @@ RUN cd mxnet; make -j4
 
 ## Torch kernel
 WORKDIR /usr/local/src
-RUN sudo apt-get install -y libzmq3-dev luarocks libssl-dev  cmake
+RUN sudo apt-get install -y libzmq3-dev luarocks libssl-dev  cmake graphviz
 
 ## From https://hub.docker.com/r/kaixhin/cuda-torch/~/dockerfile/
 # Run Torch7 installation scripts
@@ -81,6 +81,7 @@ RUN /usr/bin/luarocks install lzmq
 RUN /usr/bin/luarocks install penlight
 RUN /usr/bin/luarocks install luafilesystem
 RUN /usr/bin/luarocks install luacrypto
+#RUN /usr/bin/luarocks install qlua
 
 RUN git clone https://github.com/torch/graph.git
 WORKDIR $HOME/torch/graph/rocks
@@ -90,10 +91,16 @@ RUN git clone git://github.com/koraykv/torch-nngraph.git
 WORKDIR $HOME/torch/nn-graph
 CMD ["/usr/bin/luarocks make"]
 
+RUN git clone https://github.com/torch/cunn.git
+WORKDIR $HOME/torch/cunn/rocks
+CMD ["/usr/bin/luarocks make"]
+
 #RUN /usr/bin/luarocks install optim
 #RUN /usr/bin/luarocks install nn
 #RUN /usr/bin/luarocks install cltorch
 #RUN /usr/bin/luarocks install clnn
+
+RUN luarocks install qtlua
 
 RUN git clone https://github.com/facebook/iTorch.git
 WORKDIR $HOME/torch/iTorch
@@ -103,4 +110,5 @@ CMD ["/usr/bin/luarocks make"]
 VOLUME /notebook
 WORKDIR /notebook
 EXPOSE 8888
-CMD jupyter notebook --no-browser --ip=0.0.0.0
+#CMD itorch notebook --no-browser --ip=0.0.0.0 --profile=itorch
+CMD jupyter notebook --no-browser --ip=0.0.0.0 --profile=itorch
