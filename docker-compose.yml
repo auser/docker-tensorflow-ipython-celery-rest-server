@@ -31,6 +31,7 @@ ipython:
     service: cuda_base
   volumes:
     - ./secrets/profiles:/.jupyter
+    - /home/auser/notebook:/notebook
 redis:
   image: redis
 rabbitmq:

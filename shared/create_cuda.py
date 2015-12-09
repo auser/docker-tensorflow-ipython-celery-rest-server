@@ -108,7 +108,7 @@ d = {
 }
 
 ## Add devices
-devices = [ctl_device]
+devices = [ctl_device, uvm_device]
 d['devices'] = [format_mount(dev) for dev in devices]
 
 if args.gpus:
