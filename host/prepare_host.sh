@@ -30,6 +30,7 @@ sudo apt-get install -y build-essential python-pip python-dev \
 
 # Install latest Linux headers
 sudo apt-get install -y linux-source linux-headers-`uname -r`
+sudo apt-get install linux-image-extra-$(uname -r)
 
 sudo apt-get autoremove -y
 
@@ -148,23 +149,28 @@ sudo pip install $SRC_DIR/tensorflow_pkg/$PACKAGE_FILENAME
 fi
 
 # Install docker-compose
-DOCKER_BINARY=$(which docker)
+DOCKER_BINARY=$(which docker-compose)
 if [ -z "$DOCKER_BINARY" ]; then
 
+    echo "Installing docker"
+
     ppa="deb https://apt.dockerproject.org/repo ubuntu-trusty main"
+
     listDir=/etc/apt/sources.list.d
     listFile=$listDir/docker.list
 
     if [ ! grep -q "$ppa" /etc/apt/sources.list.d/* ]; then
         sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+
         mkdir -p $listDir
         touch $listFile
-        echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" >> $listFile
+        echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" > $listFile
+
+        sudo apt-get update -y
     fi
 
-    sudo apt-get update -y
     sudo apt-get purge lxc-docker -y
-    sudo apt-get install docker-engine -y
+    sudo apt-get install docker docker-engine -y
     sudo service docker start
 
 fi
