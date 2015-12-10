@@ -23,8 +23,8 @@ sudo apt-get install -y build-essential python-pip python-dev \
      git python-numpy swig \
      default-jdk zip zlib1g-dev \
      oracle-java8-installer \
-     nvidia-352-updates \
-     nvidia-352-updates-dev \
+     nvidia-352-updates libcuda1-352 nvidia-prime \
+     nvidia-cuda-toolkit \
      libglu1-mesa libxi-dev libxmu-dev libglu1-mesa-dev \
      linux-image-extra-virtual
 
@@ -58,11 +58,14 @@ fi
 
 PYTHON_BIN_PATH=$(pyenv which python)
 
-# Blacklist Noveau which has some kind of conflict with the nvidia driver
-# echo -e "blacklist nouveau\nblacklist lbm-nouveau\noptions nouveau modeset=0\nalias nouveau off\nalias lbm-nouveau off\n" | sudo tee /etc/modprobe.d/blacklist-nouveau.conf
-# echo options nouveau modeset=0 | sudo tee -a /etc/modprobe.d/nouveau-kms.conf
-# sudo update-initramfs -u
-# sudo reboot # Reboot (annoying you have to do this in 2015!)
+if [ ! -f $SRC_DIR/reboot_after_blacklist ]; then
+echo -e "blacklist nouveau\nblacklist lbm-nouveau\noptions nouveau modeset=0\nalias nouveau off\nalias lbm-nouveau off\n" | sudo tee /etc/modprobe.d/blacklist-nouveau.conf
+echo options nouveau modeset=0 | sudo tee -a /etc/modprobe.d/nouveau-kms.conf
+sudo update-initramfs -u
+touch $SRC_DIR/reboot_after_blacklist
+sudo reboot
+fi
+
 
 
 # Install CUDA 7.0 (note – don't use any other version)
@@ -71,9 +74,12 @@ cd $SRC_DIR
 if [ ! -f $SRC_DIR/cuda_7.0.28_linux.run ]; then
     wget http://developer.download.nvidia.com/compute/cuda/7_0/Prod/local_installers/cuda_7.0.28_linux.run
     sudo chmod u+x cuda_7.0.28_linux.run
-
+sudo apt-get install -y nvidia-cuda-toolkit
     sudo ./cuda_7.0.28_linux.run --silent --driver --toolkit --toolkitpath=$CUDA_HOME --samples --samplespath=$HOME/
+
+sudo chmod 0666 /dev/nvidia*
 fi
+
 
 cd $SRC_DIR
 
