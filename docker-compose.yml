@@ -32,6 +32,7 @@ ipython:
   volumes:
     - ./secrets/profiles:/.jupyter
     - /home/auser/notebook:/notebook
+    - /usr/local/src/tensorflow_pkg:/tmp/cache
 redis:
   image: redis
 rabbitmq:
@@ -43,13 +44,13 @@ rabbitmq:
 
 # zookeeper:
 #   image: wurstmeister/zookeeper
-#   ports: 
+#   ports:
 #     - "2181"
 # kafka:
 #   image: wurstmeister/kafka
 #   ports:
 #     - "9092"
-#   links: 
+#   links:
 #     - zookeeper:zk
 #   environment:
 #     KAFKA_ADVERTISED_HOST_NAME: 10.0.1.201

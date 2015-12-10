@@ -8,8 +8,11 @@ SRC_DIR=/usr/local/src
 
 CUDA_VERSION=7.0
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
-zero=0
 
+### DO NOT TOUCH BELOW HERE (UNLESS YOU KNOW WHAT YOU ARE DOING)
+
+zero=0
+one=1
 ## Working dir
 cd $SRC_DIR
 
@@ -67,13 +70,9 @@ cd $SRC_DIR
 if [ ! -f $SRC_DIR/cuda_7.0.28_linux.run ]; then
     wget http://developer.download.nvidia.com/compute/cuda/7_0/Prod/local_installers/cuda_7.0.28_linux.run
     sudo chmod u+x cuda_7.0.28_linux.run
-fi
 
-sudo ./cuda_7.0.28_linux.run --silent --driver --toolkit --toolkitpath=$CUDA_HOME --samples --samplespath=$HOME/
-# cd nvidia_installers
-# sudo ./NVIDIA-Linux-x86_64-346.46.run --accept-license --update
-# sudo modprobe nvidia
-# sudo ./cuda-linux64-rel-7.0.28-19326674.run
+    sudo ./cuda_7.0.28_linux.run --silent --driver --toolkit --toolkitpath=$CUDA_HOME --samples --samplespath=$HOME/
+fi
 
 cd $SRC_DIR
 
@@ -129,7 +128,7 @@ fi
 echo $SKIP_TENSORFLOW_BUILD
 echo $SKIP_TENSORFLOW_PACKAGE_BUILD
 
-if [ "$SKIP_TENSORFLOW_BUILD" = $zero ]; then
+if [ "$SKIP_TENSORFLOW_BUILD" != "$one" ]; then
 cd $SRC_DIR/tensorflow
 PYTHON_BIN_PATH=$PYTHON_BIN_PATH CUDA_TOOLKIT_PATH=$CUDA_HOME CUDA_INSTALL_PATH=$CUDA_HOME CUDNN_INSTALL_PATH=$CUDA_HOME TF_NEED_CUDA=1 ./configure
 bazel build -c opt --config=cuda //tensorflow/cc:tutorials_example_trainer
@@ -138,15 +137,39 @@ fi
 # Build Python package
 pip install wheel
 
-if [ "$SKIP_TENSORFLOW_PACKAGE_BUILD" = $zero ]; then
+if [ "$SKIP_TENSORFLOW_PACKAGE_BUILD" != "$one" ]; then
+
+cd $SRC_DIR/tensorflow
 bazel build -c opt --config=cuda //tensorflow/tools/pip_package:build_pip_package
 bazel-bin/tensorflow/tools/pip_package/build_pip_package $SRC_DIR/tensorflow_pkg
-sudo pip install $SRC_DIR/tensorflow_pkg/tensorflow-0.5.0-cp27-none-linux_x86_64.whl
+
+PACKAGE_FILENAME=$(ls $SRC_DIR/tensorflow_pkg | sort -V | tail -n 1)
+sudo pip install $SRC_DIR/tensorflow_pkg/$PACKAGE_FILENAME
 fi
 
 # Install docker-compose
-wget https://gist.githubusercontent.com/wdullaer/f1af16bd7e970389bad3/raw/f9a4b9dd3f073433284e1690c1649db2a18ee928/install.sh
+DOCKER_BINARY=$(which docker)
+if [ -z "$DOCKER_BINARY" ]; then
+
+    ppa="deb https://apt.dockerproject.org/repo ubuntu-trusty main"
+    listDir=/etc/apt/sources.list.d
+    listFile=$listDir/docker.list
+
+    if [ ! grep -q "$ppa" /etc/apt/sources.list.d/* ]; then
+        sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+        mkdir -p $listDir
+        touch $listFile
+        echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" >> $listFile
+    fi
+
+    sudo apt-get update -y
+    sudo apt-get purge lxc-docker -y
+    sudo apt-get install docker-engine -y
+    sudo service docker start
+
+fi
 
 # Test it!
-cd $SRC_DIR/tensorflow/tensorflow/models/image/cifar10/
-python cifar10_multi_gpu_train.py
+if [ "$RUN_TEST" != "" ]; then
+ python $SRC_DIR/tensorflow/tensorflow/models/image/cifar10/cifar10_multi_gpu_train.py
+fi
