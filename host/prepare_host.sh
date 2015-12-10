@@ -1,9 +1,58 @@
-#!/bin/bash
+#!/bin/bash -ex
+
+SRC_DIR=/usr/local/src
+
+## Mainly for development speed
+# SKIP_TENSORFLOW_BUILD=
+# SKIP_TENSORFLOW_PACKAGE_BUILD=
+
+CUDA_VERSION=7.0
+export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
+zero=0
+
+## Working dir
+cd $SRC_DIR
 
 # Install various packages
 sudo apt-get update
 sudo apt-get upgrade -y # choose “install package maintainers version”
-sudo apt-get install -y build-essential python-pip python-dev git python-numpy swig python-dev default-jdk zip zlib1g-dev
+sudo apt-get install -y build-essential python-pip python-dev \
+     git python-numpy swig \
+     default-jdk zip zlib1g-dev \
+     oracle-java8-installer \
+     nvidia-352-updates \
+     nvidia-352-updates-dev \
+     libglu1-mesa libxi-dev libxmu-dev libglu1-mesa-dev \
+     linux-image-extra-virtual
+
+# Install latest Linux headers
+sudo apt-get install -y linux-source linux-headers-`uname -r`
+
+sudo apt-get autoremove -y
+
+if [ ! -d $HOME/.pyenv ]; then
+    git clone https://github.com/yyuu/pyenv.git ~/.pyenv
+fi
+
+PYENV_INSTALLED=$(grep -qe "^export PYENV_ROOT" "$HOME/.bash_profile")
+
+if [ -z "$PYENV_INSTALLED" ]; then
+    echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bash_profile
+    echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bash_profile
+    echo 'eval "$(pyenv init -)"' >> ~/.bash_profile
+
+    pyenv init -
+fi
+
+PYTHON_VERSION=2.7.10
+PYTHON_VERSION_INSTALLED=$(pyenv version $PYTHON_VERSION)
+
+if [ -z "$PYTHON_VERSION_INSTALLED" ]; then
+   pyenv install $PYTHON_VERSION
+   pyenv global $PYTHON_VERSION
+fi
+
+PYTHON_BIN_PATH=$(pyenv which python)
 
 # Blacklist Noveau which has some kind of conflict with the nvidia driver
 # echo -e "blacklist nouveau\nblacklist lbm-nouveau\noptions nouveau modeset=0\nalias nouveau off\nalias lbm-nouveau off\n" | sudo tee /etc/modprobe.d/blacklist-nouveau.conf
@@ -12,69 +61,92 @@ sudo apt-get install -y build-essential python-pip python-dev git python-numpy s
 # sudo reboot # Reboot (annoying you have to do this in 2015!)
 
 
-# Some other annoying thing we have to do
-# sudo apt-get install -y linux-image-extra-virtual
-# sudo reboot # Not sure why this is needed
-
-# Install latest Linux headers
-sudo apt-get install -y linux-source linux-headers-`uname -r` 
-
 # Install CUDA 7.0 (note – don't use any other version)
-wget http://developer.download.nvidia.com/compute/cuda/7_0/Prod/local_installers/cuda_7.0.28_linux.run
-chmod +x cuda_7.0.28_linux.run
-./cuda_7.0.28_linux.run -extract=`pwd`/nvidia_installers
-cd nvidia_installers
-sudo ./NVIDIA-Linux-x86_64-346.46.run 
-sudo modprobe nvidia
-sudo ./cuda-linux64-rel-7.0.28-19326674.run 
-cd
+cd $SRC_DIR
+
+if [ ! -f $SRC_DIR/cuda_7.0.28_linux.run ]; then
+    wget http://developer.download.nvidia.com/compute/cuda/7_0/Prod/local_installers/cuda_7.0.28_linux.run
+    sudo chmod u+x cuda_7.0.28_linux.run
+fi
+
+sudo ./cuda_7.0.28_linux.run --silent --driver --toolkit --toolkitpath=$CUDA_HOME --samples --samplespath=$HOME/
+# cd nvidia_installers
+# sudo ./NVIDIA-Linux-x86_64-346.46.run --accept-license --update
+# sudo modprobe nvidia
+# sudo ./cuda-linux64-rel-7.0.28-19326674.run
+
+cd $SRC_DIR
 
 # Install CUDNN 6.5 (note – don't use any other version)
-wget https://s3-eu-west-1.amazonaws.com/christopherbourez/public/cudnn-6.5-linux-x64-v2.tgz
-tar cudnn-6.5-linux-x64-v2.tgz
-rm xvzf cudnn-6.5-linux-x64-v2.tgz
-sudo cp cudnn-6.5-linux-x64-v2/cudnn.h /usr/local/cuda-7.5/include/
-sudo cp cudnn-6.5-linux-x64-v2/libcudnn* /usr/local/cuda-7.5/lib64/
+if [ ! -d $SRC_DIR/cudnn-6.5-linux-x64-v2 ]; then
+    echo "Please upload the cudnn directory at:"
+    echo "$SRC_DIR/cudnn-6.5-linux-x64-v2"
+    exit 1
+fi
 
+#wget https://s3-eu-west-1.amazonaws.com/christopherbourez/public/cudnn-6.5-linux-x64-v2.tgz
+# tar cudnn-6.5-linux-x64-v2.tgz
+# rm xvzf cudnn-6.5-linux-x64-v2.tgz
+
+sudo cp cudnn-6.5-linux-x64-v2/libcudnn_static.a $CUDA_HOME/lib64/
+sudo cp cudnn-6.5-linux-x64-v2/libcudnn.so.6.5.48 $CUDA_HOME/lib64/libcudnn.so.6.5
+sudo cp cudnn-6.5-linux-x64-v2/cudnn.h $CUDA_HOME/include/
 
 # At this point the root mount is getting a bit full
 # I had a lot of issues where the disk would fill up and then Bazel would end up in this weird state complaining about random things
 # Make sure you don't run out of disk space when building Tensorflow!
-sudo mkdir /mnt/tmp
-sudo chmod 777 /mnt/tmp
-sudo rm -rf /tmp
-sudo ln -s /mnt/tmp /tmp
+# sudo mkdir /mnt/tmp
+# sudo chmod 777 /mnt/tmp
+# sudo rm -rf /tmp
+# sudo ln -s /mnt/tmp /tmp
 # Note that /mnt is not saved when building an AMI, so don't put anything crucial on it
 
 # Install Bazel
-cd /mnt/tmp
-git clone https://github.com/bazelbuild/bazel.git
-cd bazel
-git checkout tags/0.1.0
+cd $SRC_DIR
+
+if [ ! -f /usr/local/bin/bazel ]; then
+
+if [ ! -d $SRC_DIR/bazel ]; then
+    git clone https://github.com/bazelbuild/bazel.git
+fi
+
+cd $SRC_DIR/bazel
+git checkout tags/0.1.1
 ./compile.sh
-sudo cp output/bazel /usr/bin
+sudo cp output/bazel /usr/local/bin
+
+fi
+
 
 # Install TensorFlow
-cd /mnt/tmp
-export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda/lib64"
-export CUDA_HOME=/usr/local/cuda
-git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-cd tensorflow
-# Patch to support older K520 devices on AWS
-# wget "https://gist.githubusercontent.com/infojunkie/cb6d1a4e8bf674c6e38e/raw/5e01e5b2b1f7afd3def83810f8373fbcf6e47e02/cuda_30.patch"
-# git apply cuda_30.patch
-# According to https://github.com/tensorflow/tensorflow/issues/25#issuecomment-156234658 this patch is no longer needed
-# Instead, you need to run ./configure like below (not tested yet)
-TF_UNOFFICIAL_SETTING=1 ./configure
+cd $SRC_DIR
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$CUDA_HOME/lib64"
+
+if [ ! -d $SRC_DIR/tensorflow ]; then
+    git clone --recurse-submodules https://github.com/tensorflow/tensorflow
+fi
+
+echo $SKIP_TENSORFLOW_BUILD
+echo $SKIP_TENSORFLOW_PACKAGE_BUILD
+
+if [ "$SKIP_TENSORFLOW_BUILD" = $zero ]; then
+cd $SRC_DIR/tensorflow
+PYTHON_BIN_PATH=$PYTHON_BIN_PATH CUDA_TOOLKIT_PATH=$CUDA_HOME CUDA_INSTALL_PATH=$CUDA_HOME CUDNN_INSTALL_PATH=$CUDA_HOME TF_NEED_CUDA=1 ./configure
 bazel build -c opt --config=cuda //tensorflow/cc:tutorials_example_trainer
+fi
 
 # Build Python package
-# Note: you have to specify --config=cuda here - this is not mentioned in the official docs
-# https://github.com/tensorflow/tensorflow/issues/25#issuecomment-156173717
+pip install wheel
+
+if [ "$SKIP_TENSORFLOW_PACKAGE_BUILD" = $zero ]; then
 bazel build -c opt --config=cuda //tensorflow/tools/pip_package:build_pip_package
-bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
-sudo pip install /tmp/tensorflow_pkg/tensorflow-0.5.0-cp27-none-linux_x86_64.whl
+bazel-bin/tensorflow/tools/pip_package/build_pip_package $SRC_DIR/tensorflow_pkg
+sudo pip install $SRC_DIR/tensorflow_pkg/tensorflow-0.5.0-cp27-none-linux_x86_64.whl
+fi
+
+# Install docker-compose
+wget https://gist.githubusercontent.com/wdullaer/f1af16bd7e970389bad3/raw/f9a4b9dd3f073433284e1690c1649db2a18ee928/install.sh
 
 # Test it!
-cd tensorflow/models/image/cifar10/
-python cifar10_multi_gpu_train.py 
+cd $SRC_DIR/tensorflow/tensorflow/models/image/cifar10/
+python cifar10_multi_gpu_train.py

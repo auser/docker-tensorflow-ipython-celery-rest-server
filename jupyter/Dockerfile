@@ -1,51 +1,61 @@
 # FROM ermaker/keras-jupyter
 # FROM cuda:cudnn-runtime
-FROM kaixhin/cuda
+#FROM kaixhin/cuda
 # FROM ubuntu:14.04
+FROM jupyter/minimal-notebook
 
 ## Install prereqs
 
-WORKDIR /usr/local/src
-RUN apt-get update -y --fix-missing && apt-get install -q -y --no-install-recommends \
-  wget bzip2 ca-certificates \
-  build-essential \
-  libglib2.0-0 libxext6 libsm6 libxrender1 \
-  pkg-config libfreetype6-dev libXext-dev python-qt4 \
-  curl grep sed dpkg git \
-  && rm -rf /var/lib/apt/lists/*
+## Install GPU stuff
+RUN apt-get update -y && \
+    apt-get install -y \
+            wget \
+            build-essential
 
-## Miniconda (https://hub.docker.com/r/continuumio/miniconda/~/dockerfile/)
-WORKDIR /opt
-RUN apt-get update --fix-missing && apt-get install -y wget bzip2 ca-certificates \
-    libglib2.0-0 libxext6 libsm6 libxrender1
-RUN echo 'export PATH=/usr/local/src/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
-    wget --quiet https://repo.continuum.io/archive/Anaconda2-2.4.0-Linux-x86_64.sh && \
-    pwd && ls -l && \
-    /bin/bash Anaconda2-2.4.0-Linux-x86_64.sh -b -p /opt/conda && \
-    rm /opt/Anaconda2-2.4.0-Linux-x86_64.sh && \
-    /opt/conda/bin/conda install --yes conda==3.18.3
+# WORKDIR /usr/local/src
+# RUN apt-get update -y --fix-missing && apt-get install -q -y --no-install-recommends \
+#   wget bzip2 ca-certificates \
+#   build-essential \
+#   libglib2.0-0 libxext6 libsm6 libxrender1 \
+#   pkg-config libfreetype6-dev libXext-dev python-qt4 \
+#   curl grep sed dpkg git \
+#   && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get install -y curl grep sed dpkg && \
-    TINI_VERSION=`curl https://github.com/krallin/tini/releases/latest | grep -o "/v.*\"" | sed 's:^..\(.*\).$:\1:'` && \
-    curl -L "https://github.com/krallin/tini/releases/download/v${TINI_VERSION}/tini_${TINI_VERSION}.deb" > tini.deb && \
-    dpkg -i tini.deb && \
-    rm tini.deb && \
-    apt-get clean
+# ## Miniconda (https://hub.docker.com/r/continuumio/miniconda/~/dockerfile/)
+# WORKDIR /opt
+# RUN apt-get update --fix-missing && apt-get install -y wget bzip2 ca-certificates \
+#     libglib2.0-0 libxext6 libsm6 libxrender1
+# RUN echo 'export PATH=/usr/local/src/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
+#     wget --quiet https://repo.continuum.io/archive/Anaconda2-2.4.0-Linux-x86_64.sh && \
+#     pwd && ls -l && \
+#     /bin/bash Anaconda2-2.4.0-Linux-x86_64.sh -b -p /opt/conda && \
+#     rm /opt/Anaconda2-2.4.0-Linux-x86_64.sh && \
+#     /opt/conda/bin/conda install --yes conda==3.18.3
 
-ENV PATH /opt/conda/bin:$PATH
+# RUN apt-get install -y curl grep sed dpkg && \
+#     TINI_VERSION=`curl https://github.com/krallin/tini/releases/latest | grep -o "/v.*\"" | sed 's:^..\(.*\).$:\1:'` && \
+#     curl -L "https://github.com/krallin/tini/releases/download/v${TINI_VERSION}/tini_${TINI_VERSION}.deb" > tini.deb && \
+#     dpkg -i tini.deb && \
+#     rm tini.deb && \
+#     apt-get clean
 
-# http://bugs.python.org/issue19846
-# > At the moment, setting "LANG=C" on a Linux system *fundamentally breaks Python 3*, and that's not OK.
-ENV LANG C.UTF-8
+# ENV PATH /opt/conda/bin:$PATH
 
-ENTRYPOINT [ "/usr/bin/tini", "--" ]
+# # http://bugs.python.org/issue19846
+# # > At the moment, setting "LANG=C" on a Linux system *fundamentally breaks Python 3*, and that's not OK.
+# ENV LANG C.UTF-8
+
+# ENTRYPOINT [ "/usr/bin/tini", "--" ]
 ##
 
 # iPython stuff
 RUN conda install -y theano h5py
 RUN pip install keras ipyparallel sklearn
-RUN conda install -y jupyter pandas matplotlib seaborn 
-RUN pip install https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0.5.0-cp27-none-linux_x86_64.whl
+RUN conda install -y jupyter pandas matplotlib seaborn
+
+## Install tensorflow
+
+# RUN pip install https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0.5.0-cp27-none-linux_x86_64.whl
 
 ## mxnet
 WORKDIR /usr/local/src
@@ -121,4 +131,4 @@ WORKDIR /notebook
 ## The rest
 EXPOSE 8888
 #CMD itorch notebook --no-browser --ip=0.0.0.0 --profile=itorch
-CMD jupyter notebook --no-browser --ip=0.0.0.0 --config=/.jupyter/jupyter_notebook_config.py 
+CMD jupyter notebook --no-browser --ip=0.0.0.0 --config=/.jupyter/jupyter_notebook_config.py
