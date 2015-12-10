@@ -100,7 +100,8 @@ def format_mount(a, b=None):
 	return '{0}:{1}'.format(a, b)
 
 driver_version = query_nvsmi('Driver Version')
-no_error('nvidia-smi nvidia-modprobe')
+no_error('nvidia-smi')
+#no_error('nvidia-smi nvidia-modprobe')
 
 d = {
 	'devices': [],

@@ -65,7 +65,9 @@ RUN cd mxnet; make -j4
 
 ## Torch kernel
 WORKDIR /usr/local/src
-RUN sudo apt-get install -y libzmq3-dev luarocks libssl-dev  cmake graphviz
+RUN sudo apt-get install -y libzmq3-dev \
+             luarocks libssl-dev  cmake graphviz \
+             libqtgui4:amd64
 
 ## From https://hub.docker.com/r/kaixhin/cuda-torch/~/dockerfile/
 # Run Torch7 installation scripts
