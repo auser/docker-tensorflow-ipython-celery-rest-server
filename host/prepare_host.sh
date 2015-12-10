@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -x
 
 SRC_DIR=/usr/local/src
 
@@ -149,11 +149,8 @@ sudo pip install $SRC_DIR/tensorflow_pkg/$PACKAGE_FILENAME
 fi
 
 # Install docker-compose
-DOCKER_BINARY=$(which docker)
-
-echo "Checking for docker"
-
-if [ -z "$DOCKER_BINARY" ]; then
+echo "Checking for docker $(command -v docker)"
+if [ ! -x "$(command -v docker)" ]; then
 
 echo "Installing docker"
 ppa="deb https://apt.dockerproject.org/repo ubuntu-trusty main"
@@ -161,16 +158,16 @@ ppa="deb https://apt.dockerproject.org/repo ubuntu-trusty main"
 listDir=/etc/apt/sources.list.d
 listFile=$listDir/docker.list
 
-if [ ! grep -q "$ppa" /etc/apt/sources.list.d/* ]; then
+if [ ! -x "$(grep -Fxq "$ppa" $listFile)" ]; then
     sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
 
-    mkdir -p $listDir
-    touch $listFile
-    echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" > $listFile
+    sudo mkdir -p $listDir
+    echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" | sudo tee $listFile
 
     sudo apt-get update -y
 fi
 
+echo "Installing..."
 sudo apt-get purge lxc-docker -y
 sudo apt-get install docker docker-engine -y
 sudo service docker start
